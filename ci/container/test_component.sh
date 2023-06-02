@@ -20,11 +20,12 @@ cd $WORKSPACE
 
 if [[ "$LOCAL_USER_NAME" == "jenkins" ]]; then
     cd target_client
-    export PATH=$WORKSPACE/target_client/node_modules/mocha/bin:$WORKSPACE/target_client/node_modules/nyc/bin:$PATH
+    export PATH=$WORKSPACE/target_client/node_modules/mocha/bin:$PATH
 else
-    export PATH=$WORKSPACE/node_modules/nyc/bin:$WORKSPACE/node_modules/mocha/bin:$PATH
+    export PATH=$WORKSPACE/node_modules/mocha/bin:$PATH
 fi
 cp $SOURCE_ROOT/ci/container/package.json .
+rm -rf node_modules
 npm install
 
 PACKAGE_NAME=$(cd $WORKSPACE && ls snowflake-sdk*.tgz)
@@ -67,7 +68,7 @@ env | grep SNOWFLAKE_ | grep -v PASS
 echo "[INFO] Starting hang_webserver.py 12345"
 python3 $THIS_DIR/hang_webserver.py 12345 &
 MOCHA_CMD=(
-    "npx nyc" "mocha" "--timeout" "$TIMEOUT" "--recursive" "--full-trace"
+   "npx" "nyc" "mocha" "--timeout" "$TIMEOUT" "--recursive" "--full-trace"
 )
 
 if [[ -z "$GITHUB_ACTIONS" ]]; then
