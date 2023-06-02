@@ -96,10 +96,10 @@ fi
 
 echo "[INFO] Running Tests: Test result: $WORKSPACE/junit.xml"
 
-npm run:testCoverage
-
 if ! ${MOCHA_CMD[@]} "$SOURCE_ROOT/test/**/*.js"; then
     echo "[ERROR] Test failed"
     [[ -f "$WORKSPACE/junit.xml" ]] && cat $WORKSPACE/junit.xml
     exit 1
 fi
+
+npm run test:coverageReport
