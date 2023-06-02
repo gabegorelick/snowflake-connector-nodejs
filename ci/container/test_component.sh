@@ -67,7 +67,7 @@ env | grep SNOWFLAKE_ | grep -v PASS
 echo "[INFO] Starting hang_webserver.py 12345"
 python3 $THIS_DIR/hang_webserver.py 12345 &
 MOCHA_CMD=(
-    "mocha" "--timeout" "$TIMEOUT" "--recursive" "--full-trace"
+    "nyc mocha" "--timeout" "$TIMEOUT" "--recursive" "--full-trace"
 )
 
 if [[ -z "$GITHUB_ACTIONS" ]]; then
@@ -95,6 +95,9 @@ if [[ -z "$GITHUB_ACTIONS" ]]; then
 fi
 
 echo "[INFO] Running Tests: Test result: $WORKSPACE/junit.xml"
+
+npm run:testCoverage
+
 if ! ${MOCHA_CMD[@]} "$SOURCE_ROOT/test/**/*.js"; then
     echo "[ERROR] Test failed"
     [[ -f "$WORKSPACE/junit.xml" ]] && cat $WORKSPACE/junit.xml
