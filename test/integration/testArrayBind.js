@@ -646,8 +646,8 @@ describe('testArrayBind - full path with cancel', function ()
   const tableName = `${DATABASE_NAME}.${SCHEMA_NAME}.testAB`;
 
   const rowsToInsert = 10;
-  const delayPerRowMs = 5000;
-  const cancelInsertAfterMs = 2000;
+  const delayPerRowMs = 10000;
+  const cancelInsertAfterMs = 4000;
 
   // SYSTEM$WAIT is not supported as insert with binds in regression test, so it's set as default for last column
   const createABTable = `create or replace table ${tableName}(colA string, colB number, colC date, colD time, colE TIMESTAMP_NTZ, colF TIMESTAMP_TZ, colG string default SYSTEM$WAIT(${delayPerRowMs}, 'MILLISECONDS'))`;
