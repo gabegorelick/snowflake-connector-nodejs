@@ -8,6 +8,8 @@ var connOption = require('./connectionOptions').valid;
 var testUtil = require('./testUtil');
 var fs = require('fs');
 var tmp = require('tmp');
+const globalConfig = require("../../lib/global_config");
+
 
 describe('Execute test', function ()
 {
@@ -177,6 +179,9 @@ describe('Execute test - variant', function ()
   const TEST_VARIANT_FORMAT = "TEST_VARIANT_FORMAT";
   const TEST_COL = "COL";
   const TEST_HEADER = "ROOT";
+  const TEST_ATTRIBUTE_NAME = "attr";
+  const TEST_ATTRIBUTE_VALUE = "attrValue";
+  const ELEMENT_VALUE_FIELD = "#text";
   const TEST_XML_VAL = 123;
   const TEST_JSON_VAL = "<123>";
 
@@ -213,14 +218,37 @@ describe('Execute test - variant', function ()
   var testCases =
     [
       {
-        name: 'raw xml',
+        name: 'xml_single_element',
         type: 'XML',
         fileExtension: '.xml',
+        sampleData: `<${TEST_HEADER}>${TEST_XML_VAL}</${TEST_HEADER}>`
       },
       {
-        name: 'raw json',
+        name: 'xml_single_element_with_attribute',
+        type: 'XML',
+        fileExtension: '.xml',
+        sampleData: `<${TEST_HEADER} ${TEST_ATTRIBUTE_NAME}=${TEST_ATTRIBUTE_VALUE}>${TEST_XML_VAL}</${TEST_HEADER}>`,
+        ignoreAttributes: false
+      },
+      {
+        name: 'xml_with_attribute_and_custom_parser',
+        type: 'XML',
+        fileExtension: '.xml',
+        sampleData: `<node><${TEST_HEADER} ${TEST_ATTRIBUTE_NAME}=${TEST_ATTRIBUTE_VALUE}>${TEST_XML_VAL}</${TEST_HEADER}></node>`,
+        ignoreAttributes: false,
+        attributeNamePrefix: '##'
+      },
+      {
+        name: 'xml_skip_attributes',
+        type: 'XML',
+        fileExtension: '.xml',
+        sampleData: `<node><${TEST_HEADER} ${TEST_ATTRIBUTE_NAME}=${TEST_ATTRIBUTE_VALUE}>${TEST_XML_VAL}</${TEST_HEADER}></node>`
+      },
+      {
+        name: 'raw_json',
         type: 'JSON',
         fileExtension: '.json',
+        sampleData: `{${TEST_HEADER}: \"${TEST_JSON_VAL}\"}`
       }
     ];
 
@@ -229,20 +257,12 @@ describe('Execute test - variant', function ()
     return function (done)
     {
       {
+        globalConfig.setXmlParserConfiguration({ignoreAttributes: testCase.ignoreAttributes});
+
         var createFileFormatVariant = `CREATE OR REPLACE FILE FORMAT ${TEST_VARIANT_FORMAT} TYPE = ${testCase.type}`;
 
-        var sampleData;
-        if (testCase.type == 'XML')
-        {
-          sampleData = `<${TEST_HEADER}>${TEST_XML_VAL}</${TEST_HEADER}>`;
-        }
-        else if (testCase.type == 'JSON')
-        {
-          sampleData = `{${TEST_HEADER}: \"${TEST_JSON_VAL}\"}`;
-        }
-
         var sampleTempFile = tmp.fileSync({ postfix: testCase.fileExtension });
-        fs.writeFileSync(sampleTempFile.name, sampleData);
+        fs.writeFileSync(sampleTempFile.name, testCase.sampleData);
 
         var putVariant = `PUT file://${sampleTempFile.name} @${DATABASE_NAME}.${SCHEMA_NAME}.${TEST_VARIANT_STAGE}`;
 
@@ -295,11 +315,27 @@ describe('Execute test - variant', function ()
                   stream.on('data', function (row)
                   {
                     // Check the column, header, and value is correct
-                    if (testCase.type == 'XML')
+                    const attributeWithPrefix = globalConfig.getXmlParserConfiguration().attributeNamePrefix + TEST_ATTRIBUTE_NAME;
+
+                    if (testCase.name == 'xml_single_element')
                     {
                       assert.strictEqual(row[TEST_COL][TEST_HEADER], TEST_XML_VAL);
                     }
-                    else if (testCase.type == 'JSON')
+                    else if (testCase.name == 'xml_single_element_with_attribute')
+                    {
+                      assert.strictEqual(row[TEST_COL][TEST_HEADER][ELEMENT_VALUE_FIELD], TEST_XML_VAL);
+                    }
+                    else if (testCase.name == 'xml_with_attribute_and_custom_parser')
+                    {
+                      assert.strictEqual(row[TEST_COL]['node'][TEST_HEADER][ELEMENT_VALUE_FIELD], TEST_XML_VAL);
+                      assert.strictEqual(row[TEST_COL]['node'][TEST_HEADER][attributeWithPrefix], TEST_ATTRIBUTE_VALUE);
+                    }
+                    else if (testCase.name == 'xml_skip_attributes')
+                    {
+                      assert.strictEqual(row[TEST_COL]['node'][TEST_HEADER], TEST_XML_VAL);
+                      assert.equal(row[TEST_COL]['node'][TEST_HEADER][globalConfig.getXmlParserConfiguration().attributeNamePrefix+TEST_ATTRIBUTE_NAME], undefined);
+                    }
+                    else  if (testCase.name == 'raw_json')
                     {
                       assert.strictEqual(row[TEST_COL][TEST_HEADER], TEST_JSON_VAL);
                     }
